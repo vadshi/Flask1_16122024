@@ -17,8 +17,8 @@ quotes = [
        "id": 3,
        "author": "Rick Cook",
        "text": "Программирование сегодня — это гонка разработчиков программ, стремящихся писать программы с \
-         большей и лучшей идиотоустойчивостью, и вселенной, которая пытается создать больше отборных идиотов. \
-         Пока вселенная побеждает."
+        большей и лучшей идиотоустойчивостью, и вселенной, которая пытается создать больше отборных идиотов. \
+        Пока вселенная побеждает."
    },
    {
        "id": 5,
@@ -55,6 +55,25 @@ def get_quotes() -> list[dict[str: Any]]:
     """ Функция преобразует список словарей в массив объектов JSON."""
     return jsonify(quotes), 200
    
+
+@app.route("/params/<value>")
+def params_example(value):
+    """ Пример динамического URL'a."""
+    return jsonify(param=value, value_type=str(type(value))), 200
+
+# /quotes/1
+# /quotes/2
+# ...
+# /quotes/n-1
+# /quotes/n
+@app.route("/quotes/<int:quote_id>")
+def get_quote(quote_id: int) -> dict:
+    """ Функция возвращает цитату по значению ключа id=quote_id. """
+    for quote in quotes:
+        if quote["id"] == quote_id:
+            return jsonify(quote), 200
+    return {"error": f"Quote with id={quote_id} not found."}, 404
+
 
 
 if __name__ == "__main__":
