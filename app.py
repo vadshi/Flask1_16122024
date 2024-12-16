@@ -1,3 +1,4 @@
+from random import choice
 from flask import Flask, jsonify
 from typing import Any
 
@@ -44,7 +45,7 @@ def hello_world():  # Это функция-обработчик, которая
     return jsonify(hello="Hello, World!"), 200
 
 
-@app.route("/about")
+@app.route("/about")  # Это статический URL
 def about():
     return jsonify(about_me), 200
 
@@ -74,6 +75,17 @@ def get_quote(quote_id: int) -> dict:
             return jsonify(quote), 200
     return {"error": f"Quote with id={quote_id} not found."}, 404
 
+
+@app.get("/quotes/count")
+def quotes_count():
+    """ Function returns count of quotes. """
+    return jsonify(count=len(quotes)), 200
+
+
+@app.route("/quotes/random", methods=["GET"])
+def random_quote() -> dict:
+    """ Function retuns a random quote from list. """
+    return jsonify(choice(quotes)), 200
 
 
 if __name__ == "__main__":
