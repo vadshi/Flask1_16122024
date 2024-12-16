@@ -1,5 +1,5 @@
 from random import choice
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from typing import Any
 
 
@@ -86,6 +86,14 @@ def quotes_count():
 def random_quote() -> dict:
     """ Function retuns a random quote from list. """
     return jsonify(choice(quotes)), 200
+
+
+@app.route("/quotes", methods=['POST'])
+def create_quote():
+    """ Function creates new quote and adds it in the list. """
+    data = request.json # На выходе мы получим словарь с данными
+    print("data = ", data)
+    return {}, 201
 
 
 if __name__ == "__main__":
