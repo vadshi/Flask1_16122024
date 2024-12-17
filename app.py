@@ -128,14 +128,27 @@ def quotes_count():
 
 @app.route("/quotes", methods=['POST'])
 def create_quote():
-    """ Function creates new quote and adds it in the list. """
-    new_quote = request.json # На выходе мы получим словарь с данными
-    new_quote["id"] = quotes[-1].get("id") + 1 # Новый id   
-    # Мы проверяем наличие ключа <rating> и его валидность
-    rating = new_quote.get("rating")
-    if rating is None or rating not in range(1, 6):
-        new_quote["rating"] = 1
-    quotes.append(new_quote)
+    """ Create a new quote in the database """
+    new_quote = request.json
+   
+    if not new_quote or 'author' not in new_quote or 'text' not in new_quote:
+        return jsonify(error="Missing required fields: author and text"), 400
+    
+    rating = new_quote.get("rating", 1)
+    if rating not in range(1, 6):
+        rating = 1
+    new_quote["rating"] = rating
+    insert_quote = "INSERT INTO quotes (author, text, rating) VALUES (?, ?, ?)"
+    connection = get_db()
+    cursor = connection.cursor()
+    cursor.execute(insert_quote, tuple(new_quote.values()))
+    new_quote_id = cursor.lastrowid
+    try:
+        connection.commit()
+        cursor.close()
+    except Exception as e:
+        abort(503,f"error: {str(e)}")
+    new_quote['id'] = new_quote_id
     return jsonify(new_quote), 201
 
 
