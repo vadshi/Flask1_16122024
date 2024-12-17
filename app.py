@@ -205,6 +205,7 @@ def delete(quote_id: int):
 
 @app.route("/quotes/filter")
 def filter_quotes():
+    """ TODO: change to work wit db."""
     filtered_quotes = quotes.copy()
     # request.args хранит данных, полученные из query parameters
     for key, value in request.args.items():
