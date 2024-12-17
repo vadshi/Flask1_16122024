@@ -91,10 +91,20 @@ def random_quote() -> dict:
 @app.route("/quotes", methods=['POST'])
 def create_quote():
     """ Function creates new quote and adds it in the list. """
-    data = request.json # На выходе мы получим словарь с данными
-    print("data = ", data)
-    return {}, 201
+    new_quote = request.json # На выходе мы получим словарь с данными
+    new_quote["id"] = quotes[-1].get("id") + 1 # Новый id   
+    quotes.append(new_quote)
+    return jsonify(new_quote), 201
 
+
+@app.route("/quotes/<int:quote_id>", methods=['DELETE'])
+def delete(quote_id: int):
+    assert type(quote_id) is int, f"Bad type of <quote_id>: {type(quote_id)}"
+    for quote in quotes:
+        if quote.get("id") == quote_id:
+            quotes.remove(quote)
+            return f"Quote with {quote_id} has deleted.", 200
+    return f"Quote with {quote_id} not found.", 404
 
 if __name__ == "__main__":
     app.run(debug=True)
