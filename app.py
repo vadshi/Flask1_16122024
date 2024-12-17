@@ -1,14 +1,37 @@
 from random import choice
-from flask import Flask, jsonify, request
+from flask import Flask, abort, g, jsonify, request
 from typing import Any
 from pathlib import Path
 import sqlite3
 
 BASE_DIR = Path(__file__).parent
-path_to_db = BASE_DIR / "store.db" # путь до БД
+path_to_db = BASE_DIR / "quotes.db" # путь до БД
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
+
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(path_to_db)
+    return db
+
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
+
+
+def init_db():
+    with app.app_context():
+        db = get_db()
+        with app.open_resource('sqlite_examples/storedb_schema.sql', mode='r') as f:
+            db.cursor().executescript(f.read())
+        db.commit()
+    
+
 
 about_me = {
    "name": "Вадим",
@@ -63,12 +86,10 @@ def about():
 def get_quotes() -> list[dict[str: Any]]:
     """ Функция преобразует список словарей в массив объектов JSON."""
     select_quotes = "SELECT * from quotes"
-    connection = sqlite3.connect("store.db")
-    cursor = connection.cursor()
+    cursor = get_db().cursor()
     cursor.execute(select_quotes)
     quotes_db = cursor.fetchall() # get list[tuple]
-    cursor.close()
-    connection.close()
+
     # Подготовка данных для отправки в правильном формате.
     # Необходимо выполнить преобразование:
     # list[tuple] -> list[dict]
@@ -82,18 +103,28 @@ def get_quotes() -> list[dict[str: Any]]:
 
 @app.route("/quotes/<int:quote_id>")
 def get_quote(quote_id: int) -> dict:
-    """ Функция возвращает цитату по значению ключа id=quote_id. """
-    for quote in quotes:
-        if quote["id"] == quote_id:
-            return jsonify(quote), 200
+    """ Retrieve a single quote by ID """
+    cursor = get_db().cursor()
+    cursor.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,)) # tuple with one element
+    quote_db = cursor.fetchone()
+
+    if quote_db:
+        keys = ("id", "author", "text")
+        quote = dict(zip(keys, quote_db))
+        return jsonify(quote), 200
     return {"error": f"Quote with id={quote_id} not found."}, 404
 
 
 @app.get("/quotes/count")
 def quotes_count():
     """ Function returns count of quotes. """
-    return jsonify(count=len(quotes)), 200
-
+    select_count = "SELECT count(*) as count FROM quotes"
+    cursor = get_db().cursor()
+    cursor.execute(select_count)
+    count = cursor.fetchone()
+    if count:
+        return jsonify(count=count[0]), 200
+    abort(503) # вернем ошибку 503
 
 @app.route("/quotes", methods=['POST'])
 def create_quote():
@@ -151,4 +182,6 @@ def filter_quotes():
 
 
 if __name__ == "__main__":
+    if not path_to_db.exists():
+        init_db()
     app.run(debug=True)
