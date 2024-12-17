@@ -19,22 +19,26 @@ quotes = [
        "author": "Rick Cook",
        "text": "Программирование сегодня — это гонка разработчиков программ, стремящихся писать программы с \
         большей и лучшей идиотоустойчивостью, и вселенной, которая пытается создать больше отборных идиотов. \
-        Пока вселенная побеждает."
+        Пока вселенная побеждает.",
+        "rating": 4
    },
    {
        "id": 5,
        "author": "Waldi Ravens",
-       "text": "Программирование на С похоже на быстрые танцы на только что отполированном полу людей с острыми бритвами в руках."
+       "text": "Программирование на С похоже на быстрые танцы на только что отполированном полу людей с острыми бритвами в руках.",
+       "rating": 3
    },
    {
        "id": 6,
        "author": "Mosher's Law of Software Engineering",
-       "text": "Не волнуйтесь, если что-то не работает. Если бы всё работало, вас бы уволили."
+       "text": "Не волнуйтесь, если что-то не работает. Если бы всё работало, вас бы уволили.",
+       "rating": 5
    },
    {
        "id": 8,
        "author": "Yoggi Berra",
-       "text": "В теории, теория и практика неразделимы. На практике это не так."
+       "text": "В теории, теория и практика неразделимы. На практике это не так.",
+       "rating": 2
    },
 
 ]
@@ -93,6 +97,10 @@ def create_quote():
     """ Function creates new quote and adds it in the list. """
     new_quote = request.json # На выходе мы получим словарь с данными
     new_quote["id"] = quotes[-1].get("id") + 1 # Новый id   
+    # Мы проверяем наличие ключа <rating> и его валидность
+    rating = new_quote.get("rating")
+    if rating is None or rating not in range(1, 6):
+        new_quote["rating"] = 1
     quotes.append(new_quote)
     return jsonify(new_quote), 201
 
@@ -100,9 +108,11 @@ def create_quote():
 @app.route("/quotes/<int:quote_id>", methods=['PUT'])
 def edit_quote(quote_id: int):
     new_data = request.json
-    if not set(new_data.keys()) - set(("author", "text")):
+    if not set(new_data.keys()) - set(("author", "text", "rating")):
         for quote in quotes:
             if quote.get("id") == quote_id:
+                if "rating" in new_data and new_data["rating"] not in range(1, 6):
+                    new_data.pop("rating")
                 quote.update(new_data)
                 return jsonify(quote), 200
     else:
@@ -118,6 +128,23 @@ def delete(quote_id: int):
             quotes.remove(quote)
             return f"Quote with {quote_id} has deleted.", 200
     return f"Quote with {quote_id} not found.", 404
+
+
+@app.route("/quotes/filter")
+def filter_quotes():
+    filtered_quotes = quotes.copy()
+    for key, value in request.args.items():
+        result = []
+        if key not in ("author", 'text', "rating"):
+            return jsonify(error=f"Invalid param={key}"), 400
+        if key == "rating":
+            value = int(value)
+        for quote in filtered_quotes:
+            if quote[key] == value:
+                result.append(quote)
+        filtered_quotes = result.copy()
+    return jsonify(filtered_quotes), 200
+
 
 if __name__ == "__main__":
     app.run(debug=True)
