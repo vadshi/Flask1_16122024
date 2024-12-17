@@ -97,6 +97,19 @@ def create_quote():
     return jsonify(new_quote), 201
 
 
+@app.route("/quotes/<int:quote_id>", methods=['PUT'])
+def edit_quote(quote_id: int):
+    new_data = request.json
+    if not set(new_data.keys()) - set(("author", "text")):
+        for quote in quotes:
+            if quote.get("id") == quote_id:
+                quote.update(new_data)
+                return jsonify(quote), 200
+    else:
+        return jsonify(error="Send bad data to update."), 400
+    return jsonify(error=f"Quote with id={quote_id} doesn't exist."), 404
+
+
 @app.route("/quotes/<int:quote_id>", methods=['DELETE'])
 def delete(quote_id: int):
     assert type(quote_id) is int, f"Bad type of <quote_id>: {type(quote_id)}"
