@@ -93,7 +93,7 @@ def get_quotes() -> list[dict[str: Any]]:
     # Подготовка данных для отправки в правильном формате.
     # Необходимо выполнить преобразование:
     # list[tuple] -> list[dict]
-    keys = ("id", "author", "text")
+    keys = ("id", "author", "text", "rating")
     quotes = []
     for quote_db in quotes_db:
         quote = dict(zip(keys, quote_db))  
@@ -109,7 +109,7 @@ def get_quote(quote_id: int) -> dict:
     quote_db = cursor.fetchone()
 
     if quote_db:
-        keys = ("id", "author", "text")
+        keys = ("id", "author", "text", "rating")
         quote = dict(zip(keys, quote_db))
         return jsonify(quote), 200
     return {"error": f"Quote with id={quote_id} not found."}, 404
@@ -154,27 +154,53 @@ def create_quote():
 
 @app.route("/quotes/<int:quote_id>", methods=['PUT'])
 def edit_quote(quote_id: int):
+    """ Update an existing quote """
     new_data = request.json
-    if not set(new_data.keys()) - set(("author", "text", "rating")):
-        for quote in quotes:
-            if quote.get("id") == quote_id:
-                if "rating" in new_data and new_data["rating"] not in range(1, 6):
-                    new_data.pop("rating")
-                quote.update(new_data)
-                return jsonify(quote), 200
-    else:
-        return jsonify(error="Send bad data to update."), 400
-    return jsonify(error=f"Quote with id={quote_id} doesn't exist."), 404
+    
+    allowed_keys = {"author", "text", "rating"}
+    if not set(new_data.keys()).issubset(allowed_keys):
+        return jsonify(error="Invalid fields for update"), 400
+ 
+    if "rating" in new_data and new_data["rating"] not in range(1, 6):
+        return jsonify(error="Rating must be between 1 and 5"), 400
+
+    connection = get_db()
+    cursor = connection.cursor()
+    
+    # Создаем кортеж значений для подстановки и список строк из полей для обновления
+    update_values = tuple(new_data.values())
+    update_fields = [f"{key} = ?" for key in new_data]
+
+    if not update_fields:
+        return jsonify(error="No valid update fields provided"), 400
+
+    update_values.append(quote_id)
+    update_query = f"UPDATE quotes SET {', '.join(update_fields)} WHERE id = ?"
+    
+    cursor.execute(update_query, update_values)
+    connection.commit()
+ 
+    if cursor.rowcount == 0:
+        return jsonify(error=f"Quote with id={quote_id} not found"), 404
+    
+    responce, status_code = get_quote(quote_id)
+    if status_code == 200:
+        return responce, 200
+    abort(404, f"Quote with id={quote_id} not found.") 
 
 
 @app.route("/quotes/<int:quote_id>", methods=['DELETE'])
 def delete(quote_id: int):
-    assert type(quote_id) is int, f"Bad type of <quote_id>: {type(quote_id)}"
-    for quote in quotes:
-        if quote.get("id") == quote_id:
-            quotes.remove(quote)
-            return f"Quote with {quote_id} has deleted.", 200
-    return f"Quote with {quote_id} not found.", 404
+    delete_sql = "DELETE FROM quotes WHERE id = ?"
+    params = (quote_id,)
+    connection = get_db()
+    cursor = connection.cursor()
+    cursor.execute(delete_sql, params)
+    rows = cursor.rowcount
+    if rows:
+        connection.commit()
+        return jsonify(message=f"Quote with {quote_id} has deleted."), 200
+    abort(404, f"Quote with id={quote_id} not found.")  
 
 
 @app.route("/quotes/filter")
