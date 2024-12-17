@@ -166,9 +166,9 @@ def edit_quote(quote_id: int):
 
     connection = get_db()
     cursor = connection.cursor()
-    
+
     # Создаем кортеж значений для подстановки и список строк из полей для обновления
-    update_values = tuple(new_data.values())
+    update_values = list(new_data.values())
     update_fields = [f"{key} = ?" for key in new_data]
 
     if not update_fields:
