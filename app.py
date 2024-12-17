@@ -133,6 +133,7 @@ def delete(quote_id: int):
 @app.route("/quotes/filter")
 def filter_quotes():
     filtered_quotes = quotes.copy()
+    # request.args хранит данных, полученные из query parameters
     for key, value in request.args.items():
         result = []
         if key not in ("author", 'text', "rating"):
