@@ -103,37 +103,21 @@ def create_quote():
 def edit_quote(quote_id: int):
     """ Update an existing quote """
     new_data = request.json
-    
-    allowed_keys = {"author", "text", "rating"}
+
+    allowed_keys = {"author", "text"} # add "rating" a bit later
     if not set(new_data.keys()).issubset(allowed_keys):
-        return jsonify(error="Invalid fields for update"), 400
- 
-    if "rating" in new_data and new_data["rating"] not in range(1, 6):
-        return jsonify(error="Rating must be between 1 and 5"), 400
-
-    connection = get_db()
-    cursor = connection.cursor()
-
-    # Создаем кортеж значений для подстановки и список строк из полей для обновления
-    update_values = list(new_data.values())
-    update_fields = [f"{key} = ?" for key in new_data]
-
-    if not update_fields:
-        return jsonify(error="No valid update fields provided"), 400
-
-    update_values.append(quote_id)
-    update_query = f"UPDATE quotes SET {', '.join(update_fields)} WHERE id = ?"
+        return jsonify(error=f"Invalid fields for update: {', '.join(set(new_data.keys()) - allowed_keys)}"), 400
     
-    cursor.execute(update_query, update_values)
-    connection.commit()
- 
-    if cursor.rowcount == 0:
-        return jsonify(error=f"Quote with id={quote_id} not found"), 404
-    
-    responce, status_code = get_quote(quote_id)
-    if status_code == 200:
-        return responce, 200
-    abort(404, f"Quote with id={quote_id} not found.") 
+    quote_db = db.get_or_404(QuoteModel, quote_id)
+    try:
+        for key, value in new_data.items():
+            if not hasattr(quote_db, key):
+                raise Exception(f"Invalid {key = }.")
+            setattr(quote_db, key, value)
+        db.session.commit()
+        return jsonify(quote_db.to_dict()), 200
+    except Exception as e:
+        abort(400, f"error: {str(e)}")
 
 
 @app.route("/quotes/<int:quote_id>", methods=['DELETE'])
