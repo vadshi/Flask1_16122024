@@ -1,4 +1,3 @@
-from random import choice
 from flask import Flask, abort, g, jsonify, request
 from typing import Any
 from pathlib import Path
@@ -31,55 +30,6 @@ def init_db():
             db.cursor().executescript(f.read())
         db.commit()
     
-
-
-about_me = {
-   "name": "Вадим",
-   "surname": "Шиховцов",
-   "email": "vshihovcov@specialist.ru"
-}
-
-
-quotes = [
-   {
-       "id": 3,
-       "author": "Rick Cook",
-       "text": "Программирование сегодня — это гонка разработчиков программ, стремящихся писать программы с \
-        большей и лучшей идиотоустойчивостью, и вселенной, которая пытается создать больше отборных идиотов. \
-        Пока вселенная побеждает.",
-        "rating": 4
-   },
-   {
-       "id": 5,
-       "author": "Waldi Ravens",
-       "text": "Программирование на С похоже на быстрые танцы на только что отполированном полу людей с острыми бритвами в руках.",
-       "rating": 3
-   },
-   {
-       "id": 6,
-       "author": "Mosher's Law of Software Engineering",
-       "text": "Не волнуйтесь, если что-то не работает. Если бы всё работало, вас бы уволили.",
-       "rating": 5
-   },
-   {
-       "id": 8,
-       "author": "Yoggi Berra",
-       "text": "В теории, теория и практика неразделимы. На практике это не так.",
-       "rating": 2
-   },
-
-]
-
-
-@app.route("/") # Это первый URL, который мы будем обрабатывать
-def hello_world():  # Это функция-обработчик, которая будет вызвана для обработки URL'a
-    return jsonify(hello="Hello, World!"), 200
-
-
-@app.route("/about")  # Это статический URL
-def about():
-    return jsonify(about_me), 200
-
 
 # URL: /quotes
 @app.route("/quotes")
@@ -203,22 +153,22 @@ def delete(quote_id: int):
     abort(404, f"Quote with id={quote_id} not found.")  
 
 
-@app.route("/quotes/filter")
-def filter_quotes():
-    """ TODO: change to work wit db."""
-    filtered_quotes = quotes.copy()
-    # request.args хранит данных, полученные из query parameters
-    for key, value in request.args.items():
-        result = []
-        if key not in ("author", 'text', "rating"):
-            return jsonify(error=f"Invalid param={key}"), 400
-        if key == "rating":
-            value = int(value)
-        for quote in filtered_quotes:
-            if quote[key] == value:
-                result.append(quote)
-        filtered_quotes = result.copy()
-    return jsonify(filtered_quotes), 200
+# @app.route("/quotes/filter")
+# def filter_quotes():
+#     """ TODO: change to work wit db."""
+#     filtered_quotes = quotes.copy()
+#     # request.args хранит данных, полученные из query parameters
+#     for key, value in request.args.items():
+#         result = []
+#         if key not in ("author", 'text', "rating"):
+#             return jsonify(error=f"Invalid param={key}"), 400
+#         if key == "rating":
+#             value = int(value)
+#         for quote in filtered_quotes:
+#             if quote[key] == value:
+#                 result.append(quote)
+#         filtered_quotes = result.copy()
+#     return jsonify(filtered_quotes), 200
 
 
 if __name__ == "__main__":
