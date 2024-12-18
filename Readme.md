@@ -4,7 +4,8 @@
 1. Создать виртуальное окружение: `python3 -m venv flask_venv`  
 2. Активировать виртуальное окружение `source flask_venv/bin/activate`  
 3. Установить библиотеки: `pip install -r requirements.txt`  
-4. Запуск приложения: `python app.py`
+4. Применить миграции: `flask db upgrade`
+5. Запуск приложения: `python app.py`
 
 
 ### Работа с sqlite3
