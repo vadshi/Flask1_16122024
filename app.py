@@ -82,27 +82,21 @@ def quotes_count():
 @app.route("/quotes", methods=['POST'])
 def create_quote():
     """ Create a new quote in the database """
-    new_quote = request.json
-   
-    if not new_quote or 'author' not in new_quote or 'text' not in new_quote:
-        return jsonify(error="Missing required fields: author and text"), 400
+    data = request.json
     
-    rating = new_quote.get("rating", 1)
-    if rating not in range(1, 6):
-        rating = 1
-    new_quote["rating"] = rating
-    insert_quote = "INSERT INTO quotes (author, text, rating) VALUES (?, ?, ?)"
-    connection = get_db()
-    cursor = connection.cursor()
-    cursor.execute(insert_quote, tuple(new_quote.values()))
-    new_quote_id = cursor.lastrowid
     try:
-        connection.commit()
-        cursor.close()
+        quote = QuoteModel(**data)
+        db.session.add(quote)
+        db.session.commit()
+    except TypeError:
+        return jsonify(error=(
+            "Invalid data. Required: author and text. "
+            f"Received: {', '.join(data.keys())} "
+            )), 400  
     except Exception as e:
-        abort(503,f"error: {str(e)}")
-    new_quote['id'] = new_quote_id
-    return jsonify(new_quote), 201
+        abort(503, f"Database error: {str(e)}")
+    
+    return jsonify(quote.to_dict()), 201
 
 
 @app.route("/quotes/<int:quote_id>", methods=['PUT'])
@@ -144,16 +138,14 @@ def edit_quote(quote_id: int):
 
 @app.route("/quotes/<int:quote_id>", methods=['DELETE'])
 def delete(quote_id: int):
-    delete_sql = "DELETE FROM quotes WHERE id = ?"
-    params = (quote_id,)
-    connection = get_db()
-    cursor = connection.cursor()
-    cursor.execute(delete_sql, params)
-    rows = cursor.rowcount
-    if rows:
-        connection.commit()
-        return jsonify(message=f"Quote with {quote_id} has deleted."), 200
-    abort(404, f"Quote with id={quote_id} not found.")  
+    quote = db.get_or_404(QuoteModel, quote_id)
+    db.session.delete(quote)
+    try:
+        db.session.commit()
+        return jsonify(success=f"Quote with {quote_id} has deleted."), 200
+    except Exception as e:
+        db.session.rollback()
+        abort(503, f"Database error: {str(e)}")
 
 
 # @app.route("/quotes/filter")
