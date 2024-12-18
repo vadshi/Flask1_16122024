@@ -1,35 +1,39 @@
 from flask import Flask, abort, g, jsonify, request
 from typing import Any
 from pathlib import Path
-import sqlite3
+# import из SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String
+
 
 BASE_DIR = Path(__file__).parent
-path_to_db = BASE_DIR / "quotes.db" # путь до БД
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
-
-def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect(path_to_db)
-    return db
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{BASE_DIR / 'quotes.db'}"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config["SQLALCHEMY_ECHO"] = False
 
 
-@app.teardown_appcontext
-def close_connection(exception):
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
+class Base(DeclarativeBase):
+    pass
+
+db = SQLAlchemy(model_class=Base)
+db.init_app(app)
 
 
-def init_db():
-    with app.app_context():
-        db = get_db()
-        with app.open_resource('sqlite_examples/storedb_schema.sql', mode='r') as f:
-            db.cursor().executescript(f.read())
-        db.commit()
-    
+class QuoteModel(db.Model):
+    __tablename__ = 'quotes'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    author: Mapped[str] = mapped_column(String(32))
+    text: Mapped[str] = mapped_column(String(255))
+
+    def __init__(self, author, text):
+        self.author = author
+        self.text  = text
 
 # URL: /quotes
 @app.route("/quotes")
@@ -172,6 +176,4 @@ def delete(quote_id: int):
 
 
 if __name__ == "__main__":
-    if not path_to_db.exists():
-        init_db()
     app.run(debug=True)
