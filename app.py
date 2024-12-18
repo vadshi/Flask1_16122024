@@ -14,6 +14,7 @@ app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{BASE_DIR / 'quotes.db'}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Будет виден каждый запрос к БД в виде SQL
 app.config["SQLALCHEMY_ECHO"] = False
 
 
@@ -35,23 +36,26 @@ class QuoteModel(db.Model):
         self.author = author
         self.text  = text
 
+    def __repr__(self):
+        return f"QuoteModel{self.id, self.author}"
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "author": self.author,
+            "text": self.text
+        }
+
+
 # URL: /quotes
 @app.route("/quotes")
 def get_quotes() -> list[dict[str: Any]]:
     """ Функция преобразует список словарей в массив объектов JSON."""
-    select_quotes = "SELECT * from quotes"
-    cursor = get_db().cursor()
-    cursor.execute(select_quotes)
-    quotes_db = cursor.fetchall() # get list[tuple]
-
-    # Подготовка данных для отправки в правильном формате.
-    # Необходимо выполнить преобразование:
-    # list[tuple] -> list[dict]
-    keys = ("id", "author", "text", "rating")
+    quotes_db = db.session.scalars(db.select(QuoteModel)).all()
+    # Формирую список словарей
     quotes = []
-    for quote_db in quotes_db:
-        quote = dict(zip(keys, quote_db))  
-        quotes.append(quote)
+    for quote in quotes_db:
+        quotes.append(quote.to_dict())
     return jsonify(quotes), 200
    
 
