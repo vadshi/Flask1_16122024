@@ -7,6 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import String, func
+from sqlalchemy.exc import InvalidRequestError
 
 
 BASE_DIR = Path(__file__).parent
@@ -132,22 +133,16 @@ def delete(quote_id: int):
         abort(503, f"Database error: {str(e)}")
 
 
-# @app.route("/quotes/filter")
-# def filter_quotes():
-#     """ TODO: change to work wit db."""
-#     filtered_quotes = quotes.copy()
-#     # request.args хранит данных, полученные из query parameters
-#     for key, value in request.args.items():
-#         result = []
-#         if key not in ("author", 'text', "rating"):
-#             return jsonify(error=f"Invalid param={key}"), 400
-#         if key == "rating":
-#             value = int(value)
-#         for quote in filtered_quotes:
-#             if quote[key] == value:
-#                 result.append(quote)
-#         filtered_quotes = result.copy()
-#     return jsonify(filtered_quotes), 200
+@app.route("/quotes/filter")
+def filter_quotes():
+    """ DONE: change to work wit db."""
+    data = request.args
+    try:
+        quotes = db.session.scalars(db.select(QuoteModel).filter_by(**data)).all()
+    except InvalidRequestError:
+        abort(400, f"Invalid data: {', '.join(data.keys())}.")
+
+    return jsonify([quote.to_dict() for quote in quotes]), 200
 
 
 if __name__ == "__main__":
