@@ -1,11 +1,12 @@
 from flask import Flask, abort, g, jsonify, request
 from typing import Any
 from pathlib import Path
+from werkzeug.exceptions import HTTPException
 # import из SQLAlchemy
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String
+from sqlalchemy import String, func
 
 
 BASE_DIR = Path(__file__).parent
@@ -47,7 +48,12 @@ class QuoteModel(db.Model):
         }
 
 
-# URL: /quotes
+@app.errorhandler(HTTPException)
+def handle_exeption(e):
+    """ Функция для перехвата HTTP ошибок и возврата в виде JSON."""
+    return jsonify({"error": str(e)}), e.code
+
+
 @app.route("/quotes")
 def get_quotes() -> list[dict[str: Any]]:
     """ Функция преобразует список словарей в массив объектов JSON."""
@@ -62,27 +68,16 @@ def get_quotes() -> list[dict[str: Any]]:
 @app.route("/quotes/<int:quote_id>")
 def get_quote(quote_id: int) -> dict:
     """ Retrieve a single quote by ID """
-    cursor = get_db().cursor()
-    cursor.execute("SELECT * FROM quotes WHERE id = ?", (quote_id,)) # tuple with one element
-    quote_db = cursor.fetchone()
-
-    if quote_db:
-        keys = ("id", "author", "text", "rating")
-        quote = dict(zip(keys, quote_db))
-        return jsonify(quote), 200
-    return {"error": f"Quote with id={quote_id} not found."}, 404
+    quote = db.get_or_404(QuoteModel, quote_id)
+    return jsonify(quote.to_dict()), 200
 
 
 @app.get("/quotes/count")
 def quotes_count():
     """ Function returns count of quotes. """
-    select_count = "SELECT count(*) as count FROM quotes"
-    cursor = get_db().cursor()
-    cursor.execute(select_count)
-    count = cursor.fetchone()
-    if count:
-        return jsonify(count=count[0]), 200
-    abort(503) # вернем ошибку 503
+    count = db.session.scalar(func.count(QuoteModel.id))
+    return jsonify(count=count), 200
+
 
 @app.route("/quotes", methods=['POST'])
 def create_quote():
